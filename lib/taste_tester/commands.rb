@@ -49,9 +49,14 @@ module TasteTester
       server = TasteTester::Server.new
       if TasteTester::Server.running?
         logger.warn("Local taste-tester server running on port #{server.port}")
-        if server.latest_uploaded_ref
+        if TasteTester::Config.no_repo
+          logger.warn("Last upload time was #{server.last_upload_time}")
+        elsif server.latest_uploaded_ref
           logger.warn('Latest uploaded revision is ' +
             server.latest_uploaded_ref)
+          if server.last_upload_time
+            logger.warn("Last upload time was #{server.last_upload_time}")
+          end
         else
           logger.warn('No cookbooks/roles uploads found')
         end
@@ -80,7 +85,7 @@ module TasteTester
         upload
       end
       server = TasteTester::Server.new
-      unless TasteTester::Config.linkonly
+      unless TasteTester::Config.linkonly || TasteTester::Config.no_repo
         repo = BetweenMeals::Repo.get(
           TasteTester::Config.repo_type,
           TasteTester::Config.repo,
@@ -91,7 +96,7 @@ module TasteTester
         end
       end
       unless TasteTester::Config.skip_pre_test_hook ||
-          TasteTester::Config.linkonly
+          TasteTester::Config.linkonly || TasteTester::Config.no_repo
         TasteTester::Hooks.pre_test(TasteTester::Config.dryrun, repo, hosts)
       end
       tested_hosts = []
@@ -105,7 +110,7 @@ module TasteTester
         end
       end
       unless TasteTester::Config.skip_post_test_hook ||
-          TasteTester::Config.linkonly
+          TasteTester::Config.linkonly || TasteTester::Config.no_repo
         TasteTester::Hooks.post_test(TasteTester::Config.dryrun, repo,
                                      tested_hosts)
       end
@@ -170,7 +175,7 @@ module TasteTester
 
     def self.upload
       server = TasteTester::Server.new
-      # On a fore-upload rather than try to clean up whatever's on the server
+      # On a force-upload rather than try to clean up whatever's on the server
       # we'll restart chef-zero which will clear everything and do a full
       # upload
       if TasteTester::Config.force_upload

@@ -49,12 +49,12 @@ module TasteTester
         :config => TasteTester::Config.knife_config,
       )
       @knife.write_user_config
-      @repo = BetweenMeals::Repo.get(
+      @repo = TasteTester::Config.no_repo ? nil : BetweenMeals::Repo.get(
         TasteTester::Config.repo_type,
         TasteTester::Config.repo,
         logger,
       )
-      unless @repo.exists?
+      if @repo && !@repo.exists?
         fail "Could not open repo from #{TasteTester::Config.repo}"
       end
 
@@ -68,22 +68,25 @@ module TasteTester
     end
 
     def upload
-      checks unless @skip_checks
+      checks unless @skip_checks || !@repo
 
-      logger.info("Last commit: #{@repo.head_rev} " +
-        "'#{@repo.last_msg.split("\n").first}'" +
-        " by #{@repo.last_author[:email]}")
+      if @repo
+        logger.info("Last commit: #{@repo.head_rev} " +
+          "'#{@repo.last_msg.split("\n").first}'" +
+          " by #{@repo.last_author[:email]}")
+      end
 
-      if @force || !@server.latest_uploaded_ref
+      if @force || !@server.latest_uploaded_ref || !@repo
         logger.info('Full upload forced') if @force
-        unless TasteTester::Config.skip_pre_upload_hook
+        logger.info('No repo, doing full upload') unless @repo
+        unless TasteTester::Config.skip_pre_upload_hook || !@repo
           TasteTester::Hooks.pre_upload(TasteTester::Config.dryrun,
                                         @repo,
                                         nil,
                                         @repo.head_rev)
         end
         time(logger) { full }
-        unless TasteTester::Config.skip_post_upload_hook
+        unless TasteTester::Config.skip_post_upload_hook || !@repo
           TasteTester::Hooks.post_upload(TasteTester::Config.dryrun,
                                          @repo,
                                          nil,
@@ -113,7 +116,8 @@ module TasteTester
         end
       end
 
-      @server.latest_uploaded_ref = @repo.head_rev
+      @server.latest_uploaded_ref = @repo.head_rev if @repo
+      @server.last_upload_time = Time.new.strftime('%Y-%m-%d %H:%M:%S')
     end
 
     private
