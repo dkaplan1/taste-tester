@@ -283,7 +283,11 @@ MODES:
     end
 
     opts.on(
-      '--no-repo', 'Run without need for a repo. Works on upload, test, status.'
+      '--clowntown-no-repo', 'This option enables taste-tester to run ' +
+      'without a SCM repo of any sort. This has negative implications like ' +
+      'always doing a full upload. This option is here for weird corner ' +
+      'cases like having to sync out the export of a repo, but is not ' +
+      'generally a good idea or well supported. Use at your own risk.'
     ) do
       options[:no_repo] = true
     end
